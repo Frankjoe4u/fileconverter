@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("[doc2pdf]", err);
     return NextResponse.json(
-      { error: "Conversion failed. Please try again." },
+      { error: "Nawa oh Conversion failed. Please try again." },
       { status: 500 },
     );
   }

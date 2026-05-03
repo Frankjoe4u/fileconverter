@@ -8,14 +8,30 @@ import {
   AlignmentType,
 } from "docx";
 
-// Force CJS build — the ESM entry has no call signatures
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse") as (
-  buf: Buffer,
-) => Promise<{ text: string }>;
-
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+async function extractText(buffer: Buffer): Promise<string> {
+  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs" as any);
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+  const data = new Uint8Array(buffer);
+  const pdf = await pdfjsLib.getDocument({
+    data,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    useSystemFonts: true,
+  }).promise;
+  const pages: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const text = content.items
+      .map((item: any) => ("str" in item ? item.str : ""))
+      .join(" ");
+    pages.push(text);
+  }
+  return pages.join("\n");
+}
 
 function detectHeading(line: string): boolean {
   return (
@@ -38,10 +54,7 @@ export async function POST(request: NextRequest) {
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-
-    // Parse PDF
-    const data = await pdfParse(buffer);
-    const fullText = data.text;
+    const fullText = await extractText(buffer);
 
     if (!fullText.trim()) {
       return NextResponse.json(
@@ -51,11 +64,8 @@ export async function POST(request: NextRequest) {
     }
 
     const title = file.name.replace(/\.[^.]+$/, "");
-
-    // Build DOCX paragraphs
     const docParagraphs: Paragraph[] = [];
 
-    // Title
     docParagraphs.push(
       new Paragraph({
         text: title,
@@ -65,15 +75,14 @@ export async function POST(request: NextRequest) {
       }),
     );
 
-    // Parse content
     const lines = fullText.split("\n");
-    let buffer2: string[] = [];
+    let buf: string[] = [];
 
     const flushBuffer = () => {
-      if (buffer2.length === 0) return;
-      const text = buffer2.join(" ").trim();
+      if (buf.length === 0) return;
+      const text = buf.join(" ").trim();
       if (!text) {
-        buffer2 = [];
+        buf = [];
         return;
       }
       docParagraphs.push(
@@ -82,7 +91,7 @@ export async function POST(request: NextRequest) {
           spacing: { after: 120, line: 276 },
         }),
       );
-      buffer2 = [];
+      buf = [];
     };
 
     for (const raw of lines) {
@@ -91,7 +100,7 @@ export async function POST(request: NextRequest) {
         flushBuffer();
         continue;
       }
-      if (detectHeading(line) && buffer2.length === 0) {
+      if (detectHeading(line) && buf.length === 0) {
         docParagraphs.push(
           new Paragraph({
             text: line,
@@ -100,7 +109,7 @@ export async function POST(request: NextRequest) {
           }),
         );
       } else {
-        buffer2.push(line);
+        buf.push(line);
       }
     }
     flushBuffer();
@@ -108,9 +117,7 @@ export async function POST(request: NextRequest) {
     const doc = new Document({
       styles: {
         default: {
-          document: {
-            run: { font: "Calibri", size: 22 },
-          },
+          document: { run: { font: "Calibri", size: 22 } },
         },
       },
       sections: [
