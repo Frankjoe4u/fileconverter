@@ -14,8 +14,6 @@ export function DropZone({ option, files, onFiles, disabled }: DropZoneProps) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Derive a human-readable label and a valid HTML accept string from the
-  // Record<string, string[]> shape used by react-dropzone / the type definition.
   const acceptString = Object.keys(option.accept).join(",");
   const acceptLabel = Object.values(option.accept).flat().join(", ");
 
@@ -55,13 +53,13 @@ export function DropZone({ option, files, onFiles, disabled }: DropZoneProps) {
       onDrop={handleDrop}
       className={`
         relative rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer
-        ${disabled ? "opacity-50 cursor-not-allowed" : "hover:border-white/30"}
-        ${dragging ? "border-white/50 bg-white/5 scale-[1.01]" : "border-white/15 bg-white/2"}
+        ${disabled ? "opacity-50 cursor-not-allowed" : "hover:border-sky-300"}
+        ${dragging ? "scale-[1.01]" : ""}
         ${files.length > 0 ? "py-5 px-6" : "py-10 px-6"}
       `}
       style={{
-        borderColor: dragging ? option.color : undefined,
-        backgroundColor: dragging ? `${option.color}12` : undefined,
+        borderColor: dragging ? option.color : "#bae6fd",
+        backgroundColor: dragging ? `${option.color}12` : "#f0f9ff",
       }}
     >
       <input
@@ -71,21 +69,22 @@ export function DropZone({ option, files, onFiles, disabled }: DropZoneProps) {
         accept={acceptString}
         onChange={handleChange}
         disabled={disabled}
+        className="hidden"
       />
 
       {files.length === 0 ? (
         <div className="flex flex-col items-center gap-3 text-center">
           <span className="text-4xl">{option.icon}</span>
           <div>
-            <p className="text-white/80 font-semibold text-[15px]">
+            <p className="text-sky-800 font-semibold text-[15px]">
               Drop {option.multiple ? "files" : "a file"} here
             </p>
-            <p className="text-white/35 text-xs mt-1">
+            <p className="text-sky-400 text-xs mt-1">
               or click to browse · {acceptLabel}
             </p>
           </div>
           {option.multiple && (
-            <span className="text-[11px] text-white/25 bg-white/5 px-3 py-1 rounded-full">
+            <span className="text-[11px] text-sky-400 bg-sky-100 px-3 py-1 rounded-full">
               Multiple files supported
             </span>
           )}
@@ -95,18 +94,18 @@ export function DropZone({ option, files, onFiles, disabled }: DropZoneProps) {
           {files.map((f, i) => (
             <div
               key={i}
-              className="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2"
+              className="flex items-center gap-3 bg-sky-50 border border-sky-100 rounded-xl px-3 py-2"
             >
               <span className="text-lg">{option.icon}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-white/85 text-sm font-medium truncate">
+                <p className="text-sky-900 text-sm font-medium truncate">
                   {f.name}
                 </p>
-                <p className="text-white/35 text-xs">{formatSize(f.size)}</p>
+                <p className="text-sky-400 text-xs">{formatSize(f.size)}</p>
               </div>
             </div>
           ))}
-          <p className="text-white/25 text-xs text-center mt-1">
+          <p className="text-sky-300 text-xs text-center mt-1">
             Click to change {option.multiple ? "files" : "file"}
           </p>
         </div>
