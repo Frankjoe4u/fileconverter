@@ -7,30 +7,25 @@ import {
   HeadingLevel,
   AlignmentType,
 } from "docx";
+import PDFParser from "pdf2json";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 async function extractText(buffer: Buffer): Promise<string> {
-  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs" as any);
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "";
-  const data = new Uint8Array(buffer);
-  const pdf = await pdfjsLib.getDocument({
-    data,
-    useWorkerFetch: false,
-    isEvalSupported: false,
-    useSystemFonts: true,
-  }).promise;
-  const pages: string[] = [];
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const text = content.items
-      .map((item: any) => ("str" in item ? item.str : ""))
-      .join(" ");
-    pages.push(text);
-  }
-  return pages.join("\n");
+  return new Promise((resolve, reject) => {
+    const parser = new PDFParser();
+    parser.on("pdfParser_dataError", (err: any) => reject(err));
+    parser.on("pdfParser_dataReady", (data: any) => {
+      const text = data.Pages.map((page: any) =>
+        page.Texts.map((t: any) =>
+          decodeURIComponent(t.R.map((r: any) => r.T).join("")),
+        ).join(" "),
+      ).join("\n");
+      resolve(text);
+    });
+    parser.parseBuffer(buffer);
+  });
 }
 
 function detectHeading(line: string): boolean {
@@ -58,7 +53,10 @@ export async function POST(request: NextRequest) {
 
     if (!fullText.trim()) {
       return NextResponse.json(
-        { error: "Could not extract text from PDF" },
+        {
+          error:
+            "This PDF appears to be scanned or image-based. Only text-based PDFs are supported. Try copy-pasting text from your PDF to confirm it has selectable text.",
+        },
         { status: 422 },
       );
     }
@@ -143,9 +141,17 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
-    console.error("[pdf2doc]", err);
+    console.error(
+      "[pdf2doc] Full error:",
+      JSON.stringify(err, Object.getOwnPropertyNames(err)),
+    );
     return NextResponse.json(
-      { error: "Conversion failed. Please try again." },
+      {
+        error:
+          err instanceof Error
+            ? err.message
+            : "Conversion failed. Please try again.",
+      },
       { status: 500 },
     );
   }
