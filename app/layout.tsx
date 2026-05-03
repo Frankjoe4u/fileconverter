@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Fancy-Doc" }],
   openGraph: {
-    title: "Fancy-Doc — Free File Converter",
+    title: "Free File Converter",
     description:
       "Convert images and documents instantly. IMG to PDF, DOC to PDF, PDF to DOC. Fast, free, and secure.",
     url: "https://fancy-doc.vercel.app",
